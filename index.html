@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFGC Tree Sale Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --soil: #3b2a1a;
+    --bark: #6b4c2a;
+    --moss: #4a6741;
+    --sprout: #b8d4a8;
+    --parchment: #f5f0e8;
+    --cream: #faf7f2;
+    --red: #c0392b;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--soil); min-height: 100vh; }
+
+  header { background: var(--soil); color: var(--parchment); padding: 14px 20px; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 1.3rem; }
+  header .subtitle { font-size: 0.75rem; opacity: 0.55; margin-top: 2px; }
+
+  .container { max-width: 600px; margin: 0 auto; padding: 16px 14px 40px; }
+
+  /* Top bar */
+  .top-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+
+  .date-chip {
+    display: flex; flex-direction: column; gap: 3px;
+    background: var(--white); border: 1.5px solid var(--sprout);
+    border-radius: 10px; padding: 8px 14px; flex: 1; min-width: 170px;
+  }
+  .date-chip label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--moss); }
+  .date-chip input[type="date"] { font-size: 0.93rem; border: none; background: transparent; color: var(--soil); padding: 0; font-family: 'Inter', sans-serif; outline: none; width: 100%; }
+
+  .setting-chip { display: flex; align-items: center; gap: 7px; background: var(--parchment); border: 1px solid #d5c9b8; border-radius: 8px; padding: 7px 11px; }
+  .setting-chip label { font-size: 0.72rem; font-weight: 600; color: var(--bark); margin: 0; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; }
+  .setting-chip input[type="number"] { width: 62px; padding: 4px 7px; font-size: 0.84rem; border: 1.5px solid #d5c9b8; border-radius: 6px; background: var(--cream); color: var(--soil); outline: none; font-family: 'Inter', sans-serif; }
+  .setting-chip input:focus { border-color: var(--moss); }
+
+  .status-msg { text-align: center; font-size: 0.82rem; font-weight: 500; min-height: 20px; margin: 4px 0 14px; }
+
+  /* Entry panel */
+  .entry-panel {
+    background: var(--white); border-radius: 14px; padding: 18px;
+    border: 1px solid #e5ddd0; border-top: 4px solid var(--bark);
+    margin-bottom: 18px;
+  }
+
+  .panel-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--bark); margin-bottom: 13px; }
+
+  .quickpick-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #aaa; margin-bottom: 6px; }
+
+  .quickpick-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+  .qp-chip {
+    padding: 6px 12px; border-radius: 20px; border: 1.5px solid #d5c9b8;
+    font-size: 0.8rem; font-weight: 600; background: var(--cream);
+    color: var(--soil); cursor: pointer; transition: all 0.12s; white-space: nowrap;
+  }
+  .qp-chip:active, .qp-chip.selected { background: var(--bark); color: white; border-color: var(--bark); }
+
+  .name-input {
+    font-size: 0.95rem; font-weight: 600; font-family: 'Inter', sans-serif;
+    padding: 10px 13px; border: 2px solid #d5c9b8; border-radius: 10px;
+    background: var(--cream); color: var(--soil); outline: none;
+    width: 100%; margin-bottom: 10px; transition: border-color 0.15s;
+  }
+  .name-input:focus { border-color: var(--moss); background: var(--white); }
+
+  .big-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+  .field-group label { font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--bark); }
+
+  .big-input {
+    font-size: 1.4rem; font-weight: 700; font-family: 'Inter', sans-serif;
+    padding: 11px 13px; border: 2px solid #d5c9b8; border-radius: 10px;
+    background: var(--cream); color: var(--soil); outline: none;
+    width: 100%; transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  .big-input::-webkit-outer-spin-button,
+  .big-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .big-input:focus { border-color: var(--moss); background: var(--white); }
+
+  .calc-preview {
+    background: var(--parchment); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.8rem; color: var(--bark);
+    margin-bottom: 12px; min-height: 30px; line-height: 1.6;
+  }
+
+  .add-btn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px;
+    font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    background: var(--bark); color: white;
+    transition: transform 0.1s, opacity 0.15s; letter-spacing: 0.02em;
+    box-shadow: 0 3px 10px rgba(107,76,42,0.3);
+  }
+  .add-btn:active { transform: scale(0.97); }
+  .add-btn:hover { opacity: 0.9; }
+
+  /* Totals */
+  .totals-card {
+    background: var(--white); border-radius: 14px; padding: 18px;
+    border: 1px solid #e5ddd0; border-top: 3px solid var(--bark);
+    margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; text-align: center;
+  }
+  @media (max-width: 400px) { .totals-card { grid-template-columns: 1fr 1fr; } }
+
+  .tot-item .tot-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--bark); font-weight: 700; margin-bottom: 4px; }
+  .tot-item .tot-val { font-size: 1.25rem; font-weight: 700; color: var(--soil); font-family: 'Playfair Display', serif; }
+  .tot-item .tot-sub { font-size: 0.68rem; color: #aaa; margin-top: 2px; }
+
+  /* Summary */
+  .summary-card { background: var(--soil); color: var(--parchment); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  .summary-card h3 { font-family: 'Playfair Display', serif; font-size: 1rem; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 9px; }
+  .summary-row { display: flex; justify-content: space-between; font-size: 0.87rem; margin-bottom: 7px; opacity: 0.9; }
+  .summary-row.total { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 9px; margin-top: 9px; font-weight: 700; font-size: 1rem; opacity: 1; }
+  .summary-row .val { font-weight: 600; }
+
+  /* Reports */
+  .report-section { margin-bottom: 18px; }
+  .section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--bark); margin-bottom: 9px; font-weight: 700; }
+  .rpt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .rpt-btn { display: flex; align-items: center; gap: 6px; padding: 11px 12px; border: none; border-radius: 9px; font-size: 0.83rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; justify-content: center; }
+  .rpt-btn:hover { opacity: 0.85; }
+  .rpt-btn.xlsx  { background: #cae0fb; color: #1a5fa8; }
+  .rpt-btn.email { background: var(--soil); color: var(--parchment); }
+
+  /* Log */
+  .log-section { background: var(--white); border-radius: 12px; border: 1px solid #e5ddd0; overflow: hidden; margin-bottom: 20px; }
+  .log-header { padding: 10px 15px; background: var(--parchment); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--bark); display: flex; justify-content: space-between; align-items: center; }
+  .clear-btn { background: none; border: 1px solid #c0a880; color: var(--bark); padding: 3px 9px; border-radius: 5px; font-size: 0.72rem; cursor: pointer; }
+  .clear-btn:hover { background: #f0e8d8; }
+  .log-empty { padding: 20px; text-align: center; color: #bbb; font-size: 0.86rem; font-style: italic; }
+  .log-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 15px; border-bottom: 1px solid #f0ebe2; font-size: 0.84rem; gap: 9px; }
+  .log-item:last-child { border-bottom: none; }
+  .log-desc { flex: 1; line-height: 1.4; }
+  .log-meta { font-size: 0.71rem; color: #bbb; margin-top: 2px; }
+  .log-right { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .amount { font-weight: 700; color: var(--moss); }
+  .del-btn { background: none; border: none; color: #ddd; cursor: pointer; font-size: 0.95rem; padding: 0 2px; }
+  .del-btn:hover { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌳 FFGC Tree Sale Log</h1>
+</header>
+
+<div class="container">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="date-chip">
+      <label>👤 FFGC Member Name</label>
+      <input type="text" id="memberName" placeholder="Enter your name…">
+    </div>
+    <div class="date-chip">
+      <label>📅 Sale Date</label>
+      <input type="date" id="saleDate">
+    </div>
+    <div class="date-chip">
+      <label>📍 Market Location City</label>
+      <input type="text" id="marketCity" placeholder="e.g. Bemidji">
+    </div>
+    <div class="date-chip">
+      <label>📍 Market Location County</label>
+      <input type="text" id="marketCounty" placeholder="e.g. Beltrami">
+    </div>
+    <div class="setting-chip">
+      <label>Coop Cap %</label>
+      <input type="number" id="capRate" value="30" step="0.5" min="0" max="100">
+    </div>
+  </div>
+
+  <div class="status-msg" id="statusMsg"></div>
+
+  <!-- Entry panel -->
+  <div class="entry-panel">
+    <div class="panel-title">🌳 Add Tree Sale</div>
+
+    <div class="field-group" style="margin-bottom:10px">
+      <label>Species</label>
+      <select id="treeSpecies" onchange="onSpeciesChange()" style="font-size:1rem;padding:11px 13px;border:2px solid #d5c9b8;border-radius:10px;background:var(--cream);color:var(--soil);font-family:'Inter',sans-serif;outline:none;width:100%;cursor:pointer;">
+        <option value="">— Select species —</option>
+        <option value="Basswood">Basswood</option>
+        <option value="Bur Oak">Bur Oak</option>
+        <option value="Hackberry">Hackberry</option>
+        <option value="Northern Red Oak">Northern Red Oak</option>
+        <option value="Pin Oak">Pin Oak</option>
+        <option value="Red Maple">Red Maple</option>
+        <option value="River Birch">River Birch</option>
+        <option value="Serviceberry">Serviceberry</option>
+        <option value="Silver Maple">Silver Maple</option>
+        <option value="Sugar Maple">Sugar Maple</option>
+        <option value="Swamp White Oak">Swamp White Oak</option>
+        <option value="Walnut">Walnut</option>
+        <option value="White Oak">White Oak</option>
+        <option value="White Pine">White Pine</option>
+        <option value="Yellow Birch">Yellow Birch</option>
+        <option value="Other">Other (type below)</option>
+      </select>
+    </div>
+    <input class="name-input" type="text" id="treeSpeciesCustom" placeholder="Type custom species name…" style="display:none;margin-bottom:10px;">
+
+    <div class="field-group" style="margin-bottom:10px">
+      <label>Type</label>
+      <select id="treeType" onchange="if(this.value) document.getElementById('treeSize').focus()" style="font-size:1rem;padding:11px 13px;border:2px solid #d5c9b8;border-radius:10px;background:var(--cream);color:var(--soil);font-family:'Inter',sans-serif;outline:none;width:100%;cursor:pointer;">
+        <option value="">— Bare root or plug —</option>
+        <option value="Bare Root">Bare Root</option>
+        <option value="Plug">Plug</option>
+      </select>
+    </div>
+
+    <div class="field-group" style="margin-bottom:10px">
+      <label>Size</label>
+      <select id="treeSize" style="font-size:1rem;padding:11px 13px;border:2px solid #d5c9b8;border-radius:10px;background:var(--cream);color:var(--soil);font-family:'Inter',sans-serif;outline:none;width:100%;cursor:pointer;" onchange="if(this.value) document.getElementById('treeQty').focus()">
+        <option value="">— Select size —</option>
+        <option value='4-6"'>4-6"</option>
+        <option value='6-12"'>6-12"</option>
+        <option value='12+"'>12+"</option>
+      </select>
+    </div>
+
+    <div class="big-row">
+      <div class="field-group">
+        <label>Qty</label>
+        <input class="big-input" type="number" id="treeQty" value="1" min="1" inputmode="numeric" oninput="previewTree()">
+      </div>
+      <div class="field-group">
+        <label>$ / tree</label>
+        <input class="big-input" type="number" id="treeUnit" placeholder="0" min="0" step="0.01" inputmode="decimal" oninput="previewTree()">
+      </div>
+    </div>
+
+    <div class="calc-preview" id="treePreview">Enter qty &amp; price to preview</div>
+    <button class="add-btn" onclick="addTree()">+ Add Tree Sale</button>
+  </div>
+
+  <!-- Info note -->
+  <div style="background:var(--parchment);border:1px solid #d5c9b8;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:0.82rem;color:var(--bark);line-height:1.5;">
+    💡 Follows the FFGC Capitalization Calculator: enter the total sale price. Producer amount and coop capitalization are calculated automatically.
+  </div>
+
+  <!-- Totals -->
+  <div class="totals-card">
+    <div class="tot-item">
+      <div class="tot-label">Total Sales</div>
+      <div class="tot-val" id="totBase">$0.00</div>
+    </div>
+    <div class="tot-item">
+      <div class="tot-label">Amount to Producer</div>
+      <div class="tot-val" id="totCollected">$0.00</div>
+    </div>
+    <div class="tot-item">
+      <div class="tot-label">Coop Cap (send to FFGC)</div>
+      <div class="tot-val" id="totCap">$0.00</div>
+    </div>
+  </div>
+
+  <!-- Day summary -->
+  <div class="summary-card">
+    <h3>📋 Day Summary <span style="font-size:0.7rem;opacity:0.6;font-weight:400">(FFGC Capitalization Calculator)</span></h3>
+    <div class="summary-row"><span>Total Sales</span><span class="val" id="sumBase">$0.00</span></div>
+    <div class="summary-row"><span>Amount to Producer (70%)</span><span class="val" id="sumTotal">$0.00</span></div>
+    <div class="summary-row total"><span id="labelCap">Coop Capitalization (30%) — send to FFGC</span><span class="val" id="sumCap">$0.00</span></div>
+  </div>
+
+  <!-- Reports -->
+  <div class="report-section">
+    <div class="section-title">📊 Tree Sales Report</div>
+    <div class="rpt-btns">
+      <button class="rpt-btn xlsx"  onclick="exportFFGCExcel()">📊 FFGC Form</button>
+      <button class="rpt-btn email" onclick="emailReport()">✉ Email Report</button>
+    </div>
+  </div>
+
+  <!-- Email fallback panel -->
+  <div id="emailFallback" style="display:none; background:var(--white); border:1.5px solid var(--sprout); border-radius:12px; padding:14px 16px; margin-bottom:18px;">
+    <div style="font-size:0.84rem; font-weight:700; color:var(--bark); margin-bottom:6px;">✉ Didn't open your email app?</div>
+    <div style="font-size:0.8rem; color:#888; margin-bottom:10px; line-height:1.5;">
+      Copy the report below and paste it into a new email to <b id="fallbackRecipient"></b>. Don't forget to attach the downloaded FFGC Excel form.
+    </div>
+    <textarea id="emailFallbackText" readonly style="width:100%; min-height:160px; font-family:monospace; font-size:0.76rem; padding:10px; border:1.5px solid #d5c9b8; border-radius:8px; background:var(--cream); color:var(--soil); resize:vertical; margin-bottom:10px;"></textarea>
+    <button class="rpt-btn email" style="width:100%;" onclick="copyEmailFallback()">📋 Copy Report Text</button>
+  </div>
+
+  <!-- Log -->
+  <div class="log-section">
+    <div class="log-header">
+      <span>Transaction Log</span>
+      <button class="clear-btn" onclick="clearAll()">Clear All</button>
+    </div>
+    <div id="logList"><div class="log-empty">No sales recorded yet.</div></div>
+  </div>
+
+</div>
+
+<script>
+  let sales = JSON.parse(localStorage.getItem('nnfTreeSales') || '[]');
+
+  // Init
+  document.getElementById('saleDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('memberName').value = localStorage.getItem('ffgcMemberName') || '';
+  document.getElementById('memberName').addEventListener('input', () => {
+    localStorage.setItem('ffgcMemberName', document.getElementById('memberName').value);
+  });
+  function getMemberName() { return document.getElementById('memberName').value.trim(); }
+
+  document.getElementById('marketCity').value = localStorage.getItem('ffgcMarketCity') || '';
+  document.getElementById('marketCity').addEventListener('input', () => {
+    localStorage.setItem('ffgcMarketCity', document.getElementById('marketCity').value);
+  });
+  document.getElementById('marketCounty').value = localStorage.getItem('ffgcMarketCounty') || '';
+  document.getElementById('marketCounty').addEventListener('input', () => {
+    localStorage.setItem('ffgcMarketCounty', document.getElementById('marketCounty').value);
+  });
+  function getMarketLocation() {
+    const city = document.getElementById('marketCity').value.trim();
+    const county = document.getElementById('marketCounty').value.trim();
+    if (city && county) return `${city}, ${county}`;
+    return city || county || '';
+  }
+  document.getElementById('capRate').addEventListener('input', updateUI);
+
+  // ── Dropdown species ──────────────────────────────────────────────
+  function onSpeciesChange() {
+    const val = document.getElementById('treeSpecies').value;
+    const customInput = document.getElementById('treeSpeciesCustom');
+    if (val === 'Other') {
+      customInput.style.display = 'block';
+      customInput.focus();
+    } else {
+      customInput.style.display = 'none';
+      customInput.value = '';
+      if (val) document.getElementById('treeQty').focus();
+    }
+  }
+  function getSpeciesName() {
+    const sel = document.getElementById('treeSpecies').value;
+    if (sel === 'Other') return document.getElementById('treeSpeciesCustom').value.trim() || 'Other';
+    return sel;
+  }
+  function getTreeType()  { return document.getElementById('treeType').value || ''; }
+  function getTreeSize()  { return document.getElementById('treeSize').value || ''; }
+  function resetSpecies() {
+    document.getElementById('treeSpecies').value = '';
+    document.getElementById('treeSpeciesCustom').value = '';
+    document.getElementById('treeSpeciesCustom').style.display = 'none';
+    document.getElementById('treeType').value = '';
+    document.getElementById('treeSize').value = '';
+  }
+
+  // Auto-advance on Enter
+  document.getElementById('treeSpeciesCustom').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('treeQty').focus(); });
+  document.getElementById('treeQty').addEventListener('keydown',    e => { if(e.key==='Enter') document.getElementById('treeUnit').focus(); });
+  document.getElementById('treeUnit').addEventListener('keydown',   e => { if(e.key==='Enter') addTree(); });
+
+  // ── Preview ────────────────────────────────────────────────────────
+  function previewTree() {
+    const capRate = parseFloat(document.getElementById('capRate').value)/100 || 0.30;
+    const producerRate = 1 - capRate;
+    const qty  = parseFloat(document.getElementById('treeQty').value)  || 0;
+    const unit = parseFloat(document.getElementById('treeUnit').value) || 0;
+    const totalSales = qty * unit; // Total Sales -- per FFGC spreadsheet
+    if (!totalSales) { document.getElementById('treePreview').textContent = 'Enter qty & price to preview'; return; }
+    const producer = totalSales * producerRate;   // Amount to Producer
+    const cap = totalSales * capRate;             // COOP Capitalization Amount
+    document.getElementById('treePreview').innerHTML =
+      `Total Sales: <b>${fmt(totalSales)}</b> &nbsp;·&nbsp; Producer: <b>${fmt(producer)}</b> &nbsp;·&nbsp; Coop Cap: <b>${fmt(cap)}</b>`;
+  }
+
+  // ── Add sale ───────────────────────────────────────────────────────
+  function addTree() {
+    const species = getSpeciesName();
+    const qty     = parseFloat(document.getElementById('treeQty').value)  || 1;
+    const unit    = parseFloat(document.getElementById('treeUnit').value) || 0;
+    if (!unit) { setStatus('Please enter a price per tree.', true); document.getElementById('treeUnit').focus(); return; }
+    const capRate = parseFloat(document.getElementById('capRate').value)/100 || 0.30;
+    const producerRate = 1 - capRate;
+    const totalSales = qty * unit;            // Total Sales
+    const producer = totalSales * producerRate; // Amount to Producer
+    const cap = totalSales * capRate;           // COOP Capitalization Amount
+    const treeType = getTreeType();
+    const treeSize = getTreeSize();
+    sales.push({
+      id: Date.now(), name: species || 'Tree',
+      treeType, treeSize,
+      qty, unitPrice: unit, totalSales, producer, cap,
+      date: document.getElementById('saleDate').value,
+      time: new Date().toLocaleTimeString()
+    });
+    save(); updateUI();
+    resetSpecies();
+    document.getElementById('treeQty').value = '1';
+    document.getElementById('treeUnit').value = '';
+    document.getElementById('treePreview').textContent = 'Enter qty & price to preview';
+    setStatus(`✓ ${species||'Tree'}: ${qty} × ${fmt(unit)} = ${fmt(totalSales)} total sales`);
+    document.getElementById('treeSpecies').focus();
+  }
+
+  // ── UI ─────────────────────────────────────────────────────────────
+  function updateUI() {
+    const capRate = parseFloat(document.getElementById('capRate').value)/100 || 0.30;
+    const producerRate = 1 - capRate;
+    const capPct  = (capRate*100).toFixed(1).replace(/\.?0+$/,'');
+
+    // Recalculate per FFGC spreadsheet formula each time, in case rates changed
+    sales = sales.map(s => {
+      const totalSales = s.totalSales != null ? s.totalSales : s.qty * s.unitPrice;
+      const producer = totalSales * producerRate;
+      const cap = totalSales * capRate;
+      s.totalSales = totalSales; s.producer = producer; s.cap = cap;
+      return s;
+    });
+    save();
+
+    let ts=0, tp=0, tc=0;
+    sales.forEach(s => { ts+=s.totalSales; tp+=s.producer; tc+=s.cap; });
+
+    document.getElementById('totBase').textContent       = fmt(ts);
+    document.getElementById('totCap').textContent         = fmt(tc);
+    document.getElementById('totCollected').textContent   = fmt(tp);
+    document.getElementById('sumBase').textContent        = fmt(ts);
+    document.getElementById('sumCap').textContent          = fmt(tc);
+    document.getElementById('sumTotal').textContent        = fmt(tp);
+    document.getElementById('labelCap').textContent         = `Coop Capitalization (${capPct}%) — send to FFGC`;
+
+    previewTree(); renderLog();
+  }
+
+  function renderLog() {
+    const list = document.getElementById('logList');
+    if (!sales.length) { list.innerHTML='<div class="log-empty">No sales recorded yet.</div>'; return; }
+    list.innerHTML = [...sales].reverse().map(s => `
+      <div class="log-item">
+        <div class="log-desc">
+          <b>${s.name}</b>
+          ${s.treeType ? `<span style="background:#e8d5c0;color:var(--bark);font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-left:4px">${s.treeType}</span>` : ''}
+          ${s.treeSize ? `<span style="background:#d4ebcc;color:var(--moss);font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-left:3px">${s.treeSize}</span>` : ''}
+          <span style="color:#bbb;font-size:0.76rem;margin-left:5px">${s.qty} × ${fmt(s.unitPrice)}</span>
+          <div class="log-meta">Producer: ${fmt(s.producer)} · Coop Cap: ${fmt(s.cap)} · ${formatDate(s.date)} ${s.time}</div>
+        </div>
+        <div class="log-right">
+          <span class="amount">${fmt(s.totalSales)}</span>
+          <button class="del-btn" onclick="deleteSale(${s.id})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Reports ────────────────────────────────────────────────────────
+  function getSaleDate() { return document.getElementById('saleDate').value || new Date().toISOString().split('T')[0]; }
+  function formatDate(d) { if(!d) return ''; const [y,m,day]=d.split('-'); return `${m}/${day}/${y}`; }
+
+  function buildReportText() {
+    const date=getSaleDate(), capRate=parseFloat(document.getElementById('capRate').value)||30;
+    const memberName = getMemberName();
+    let body=`FFGC Tree Sale Log\nFFGC Member: ${memberName || '(not entered)'}\nDate: ${formatDate(date)}\nCoop Capitalization: ${capRate}%\n\n`;
+    if(!sales.length){body+='No sales for this period.';}
+    else{
+      let ts=0,tp=0,tc=0;
+      body+=`Species          Type        Size   Qty   Price      Total      Producer   Coop Cap\n${'─'.repeat(85)}\n`;
+      sales.forEach(s=>{body+=`${s.name.substring(0,15).padEnd(17)} ${(s.treeType||'').padEnd(11)} ${(s.treeSize||'').padEnd(6)} ${String(s.qty).padEnd(5)} ${fmt(s.unitPrice).padEnd(10)} ${fmt(s.totalSales).padEnd(10)} ${fmt(s.producer).padEnd(10)} ${fmt(s.cap)}\n`;ts+=s.totalSales;tp+=s.producer;tc+=s.cap;});
+      body+=`${'─'.repeat(85)}\nTOTALS                                   ${fmt(ts).padEnd(10)} ${fmt(tp).padEnd(10)} ${fmt(tc)}\n\nSend to FFGC (Coop Capitalization): ${fmt(tc)}\n`;
+    }
+    body+='\n\n(Download the FFGC Excel form from the FFGC Tree Sale Log app and attach it before sending)';
+    return body;
+  }
+
+  function buildShortSummary() {
+    const date=getSaleDate();
+    const memberName = getMemberName();
+    let ts=0,tp=0,tc=0;
+    sales.forEach(s=>{ts+=s.totalSales;tp+=s.producer;tc+=s.cap;});
+    let body = `FFGC Tree Sale Log\nFFGC Member: ${memberName || '(not entered)'}\nDate: ${formatDate(date)}\n\n`;
+    body += `Total Sales: ${fmt(ts)}\nAmount to Producer: ${fmt(tp)}\nCoop Capitalization: ${fmt(tc)}\n\n`;
+    body += `(${sales.length} tree sale${sales.length===1?'':'s'} logged — full itemized report and FFGC Excel form should be attached separately)`;
+    return body;
+  }
+
+  function emailReport() {
+    const recipient = prompt('Send the FFGC report to this email address:', '');
+    if (!recipient) { setStatus('Email cancelled.', true); return; }
+    const trimmed = recipient.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setStatus('That doesn\'t look like a valid email address.', true);
+      return;
+    }
+
+    const date=getSaleDate();
+    const memberName = getMemberName();
+    const subj=encodeURIComponent(`FFGC Tree Sale Log — ${memberName ? memberName + ' — ' : ''}${formatDate(date)}`);
+    const shortBody = buildShortSummary();
+    const mailtoUrl = `mailto:${encodeURIComponent(trimmed)}?subject=${subj}&body=${encodeURIComponent(shortBody)}`;
+
+    // Always populate the fallback panel so it's ready regardless of whether mailto succeeds
+    document.getElementById('fallbackRecipient').textContent = trimmed;
+    document.getElementById('emailFallbackText').value = buildReportText();
+    document.getElementById('emailFallback').style.display = 'block';
+
+    // Detect likely failure: if the page is still visible/focused shortly after attempting
+    // to open the mail app, it probably didn't launch (a real mail app would blur the tab).
+    let mailAppLikelyOpened = false;
+    const onBlur = () => { mailAppLikelyOpened = true; };
+    window.addEventListener('blur', onBlur);
+
+    window.location.href = mailtoUrl;
+
+    setTimeout(() => {
+      window.removeEventListener('blur', onBlur);
+      if (mailAppLikelyOpened) {
+        setStatus(`✓ Opening email app addressed to ${trimmed}…`);
+      } else {
+        setStatus('Email app may not have opened — use the copy option below.', true);
+        document.getElementById('emailFallback').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 1200);
+  }
+
+  function copyEmailFallback() {
+    const ta = document.getElementById('emailFallbackText');
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(ta.value).then(() => {
+      setStatus('✓ Report copied — paste it into your email.');
+    }).catch(() => {
+      document.execCommand('copy');
+      setStatus('✓ Report copied — paste it into your email.');
+    });
+  }
+
+  function exportFFGCExcel() {
+    const capRate = parseFloat(document.getElementById('capRate').value)/100 || 0.30;
+    const prodRate = 1 - capRate;
+    const date = getSaleDate();
+    const memberName = getMemberName();
+    const fname = `FFGC-Tree-Sales-${date}.xlsx`;
+
+    // Date range should match the transaction log: earliest to latest sale date on record.
+    // Falls back to the selected Sale Date if there are no logged sales yet.
+    let fromDate = date, toDate = date;
+    if (sales.length) {
+      const dates = sales.map(s => s.date).filter(Boolean).sort();
+      fromDate = dates[0];
+      toDate = dates[dates.length - 1];
+    }
+
+    // Columns: A Species, B Type, C Size, D Qty, E Price, F Total Sales, G Amount to Producer (%), H COOP Capitalization Amount (%)
+    const wsData = [];
+    wsData[0] = ["2026 Farm and Forest Growers Cooperative -- Grower Tree Sales at Farmer's Market -- Capitalization Calculator"];
+    wsData[1] = ["Name of Grower:", memberName, "", "Sales Date Range:", "From", formatDate(fromDate), "", "Market Location", ""];
+    wsData[2] = ["", "", "", "", "To", formatDate(toDate), "", getMarketLocation()];
+    wsData[3] = ["Tree Species","Bare Root or Plug?","Tree Size (inches)","Number Sold","Average Price","Total Sales","Amount to Producer (%)","COOP Capitalization Amount (%)"];
+    wsData[4] = [null,null,null,null,null,null, prodRate, capRate];
+
+    const startRow = 5; // 0-indexed -> Excel row 6
+    const n = Math.max(sales.length, 12);
+    for (let i = 0; i < n; i++) {
+      const s = sales[i];
+      const row = startRow + i + 1;
+      if (s) {
+        const totalSales = s.qty * s.unitPrice;
+        const producer = totalSales * prodRate;
+        const cap = totalSales * capRate;
+        wsData.push([
+          s.name, s.treeType || '', s.treeSize || '', s.qty, s.unitPrice,
+          { f: `D${row}*E${row}`, v: totalSales },
+          { f: `F${row}*G$5`, v: producer },
+          { f: `F${row}*H$5`, v: cap }
+        ]);
+      } else {
+        wsData.push(["","…","…",null,null,
+          { f: `D${row}*E${row}`, v: 0 },
+          { f: `F${row}*G$5`, v: 0 },
+          { f: `F${row}*H$5`, v: 0 }
+        ]);
+      }
+    }
+
+    let sumF=0, sumG=0, sumH=0;
+    sales.forEach(s => {
+      const totalSales = s.qty * s.unitPrice;
+      sumF += totalSales; sumG += totalSales * prodRate; sumH += totalSales * capRate;
+    });
+
+    const totalsRow = startRow + n + 1; // Excel row number of "Totals:"
+    wsData.push(["Totals:", "", "", "", "",
+      { f: `SUMIF(F${startRow+1}:F${startRow+n},">0")`, v: sumF },
+      { f: `SUM(G${startRow+1}:G${startRow+n})`, v: sumG },
+      { f: `SUMIF(H${startRow+1}:H${startRow+n},">0")`, v: sumH }
+    ]);
+    wsData.push([]);
+    wsData.push(["", "", "", "", "Please send this amount with a copy of the sales log to FFGC", "", "", { f: `H${totalsRow}`, v: sumH }]);
+    wsData.push([]);
+    wsData.push([]);
+    wsData.push([]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Apply currency formatting to columns F, G, H (Total Sales, Amount to Producer, Coop Cap)
+    // for all data rows, the totals row, and the final "send to FFGC" row.
+    const currencyFmt = '$#,##0.00';
+    const sendRow = totalsRow + 2;          // "Please send this amount..." row
+    for (let r = startRow + 1; r <= sendRow; r++) {
+      ['F','G','H'].forEach(col => {
+        const addr = `${col}${r}`;
+        if (ws[addr]) ws[addr].z = currencyFmt;
+      });
+    }
+
+    // Column widths to roughly match original
+    ws['!cols'] = [
+      { wch: 22 }, { wch: 16 }, { wch: 17 }, { wch: 12 }, { wch: 12 },
+      { wch: 18 }, { wch: 18 }, { wch: 22 }
+    ];
+
+    // Merge title row, grower name box, "send to FFGC" note, and its amount cell (matches original layout)
+    ws['!merges'] = [
+      { s: { r:0, c:0 }, e: { r:0, c:7 } },   // title
+      { s: { r:1, c:1 }, e: { r:2, c:2 } },   // grower name box
+      { s: { r:19, c:4 }, e: { r:20, c:6 } }, // E20:G21 -- "Please send this amount..." note
+      { s: { r:19, c:7 }, e: { r:20, c:7 } }  // H20:H21 -- final coop cap amount
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    XLSX.writeFile(wb, fname);
+    setStatus(`✓ FFGC Excel form saved: ${fname}`);
+  }
+
+  function deleteSale(id) { sales=sales.filter(s=>s.id!==id); save(); updateUI(); }
+  function clearAll() { if(confirm('Clear all tree sales?')) { sales=[]; save(); updateUI(); } }
+  function fmt(n) { return '$'+(n||0).toFixed(2); }
+  function setStatus(msg,isError) {
+    const el=document.getElementById('statusMsg');
+    el.textContent=msg; el.style.color=isError?'#c0392b':'#4a6741';
+    if(msg) setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },3500);
+  }
+  function save() { localStorage.setItem('nnfTreeSales', JSON.stringify(sales)); }
+
+  updateUI();
+</script>
+</body>
+</html>
